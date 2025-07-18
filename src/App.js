@@ -9,7 +9,6 @@ import {
 } from "ethers";
 import "./App.css";
 
-// Constants
 const RPC_URL = "https://bsc-testnet-dataseed.bnbchain.org";
 const USDT_CONTRACT_ADDRESS = "0x787A697324dbA4AB965C58CD33c13ff5eeA6295F";
 const ERC20_ABI = [
@@ -129,7 +128,6 @@ function App() {
 
     try {
       const wallet = new Wallet(walletData.privateKey, provider);
-
       const tx = await wallet.sendTransaction({
         to: recipient,
         value: parseEther(amount),
@@ -161,30 +159,38 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <h1>🦊 Web3 Wallet (BNB + USDT)</h1>
+    <div style={styles.container}>
+      <h1 style={styles.heading}>🦊 Web3 Wallet (BNB + USDT)</h1>
 
-      <div className="form-group">
+      <section style={styles.section}>
         <input
+          type="text"
           placeholder="Name to create wallet"
           value={walletName}
           onChange={(e) => setWalletName(e.target.value)}
+          style={styles.input}
         />
-        <button onClick={generateAndSaveWallet}>Generate & Save</button>
-      </div>
+        <button onClick={generateAndSaveWallet} style={styles.button}>
+          Generate & Save
+        </button>
+      </section>
 
-      <div className="form-group">
+      <section style={styles.section}>
         <input
+          type="text"
           placeholder="Name to fetch wallet"
           value={searchName}
           onChange={(e) => setSearchName(e.target.value)}
+          style={styles.input}
         />
-        <button onClick={fetchWalletByName}>Fetch Wallet</button>
-      </div>
+        <button onClick={fetchWalletByName} style={styles.button}>
+          Fetch Wallet
+        </button>
+      </section>
 
       {walletData && (
-        <div className="wallet-info">
-          <h3>🔐 Wallet Details</h3>
+        <div style={styles.walletBox}>
+          <h3 style={styles.subheading}>🔐 Wallet Details</h3>
           <p><strong>Name:</strong> {walletData.name}</p>
           <p><strong>Address:</strong> {walletData.address}</p>
           <p><strong>Private Key:</strong> {walletData.privateKey}</p>
@@ -192,25 +198,78 @@ function App() {
           <p><strong>BNB Balance:</strong> {balance !== null ? `${balance} BNB` : "Loading..."}</p>
           <p><strong>USDT Balance:</strong> {usdtBalance !== null ? `${usdtBalance} USDT` : "Loading..."}</p>
 
-          <div className="transfer-section">
-            <h4>🚀 Send BNB or USDT</h4>
+          <section style={{ marginTop: "20px" }}>
+            <h4 style={styles.subheading}>🚀 Send Tokens</h4>
             <input
+              type="text"
               placeholder="Recipient Address"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
+              style={styles.input}
             />
             <input
+              type="text"
               placeholder="Amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              style={styles.input}
             />
-            <button onClick={sendBNB}>Send BNB</button>
-            <button onClick={transferUSDT}>Send USDT</button>
-          </div>
+            <button onClick={sendBNB} style={{ ...styles.button, marginRight: "10px" }}>
+              Send BNB
+            </button>
+            <button onClick={transferUSDT} style={styles.button}>
+              Send USDT
+            </button>
+          </section>
         </div>
       )}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    padding: "30px",
+    fontFamily: "Arial, sans-serif",
+    maxWidth: "700px",
+    margin: "auto",
+    textAlign: "center",
+  },
+  heading: {
+    fontSize: "2rem",
+    marginBottom: "20px",
+    color: "#1f2937",
+  },
+  section: {
+    marginBottom: "20px",
+  },
+  input: {
+    padding: "10px",
+    marginRight: "10px",
+    width: "60%",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+  },
+  button: {
+    padding: "10px 20px",
+    backgroundColor: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+  walletBox: {
+    marginTop: "30px",
+    padding: "20px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "10px",
+    backgroundColor: "#f9fafb",
+    textAlign: "left",
+  },
+  subheading: {
+    marginBottom: "10px",
+    color: "#111827",
+  },
+};
 
 export default App;
