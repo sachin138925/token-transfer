@@ -137,4 +137,53 @@ body {
   color: var(--text);
   resize: none;
 }
-
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.inputRow input,
+.inputRow select {
+  flex: 1 1 140px;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  outline: none;
+}
+.pillToggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 2px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.pillToggle span {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  transition: 0.2s;
+}
+.pillToggle .active {
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #fff;
+}
+.btn {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
