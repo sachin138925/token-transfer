@@ -1,189 +1,100 @@
-/* Google font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-
+/* ---------- RESET & ROOT ---------- */
 :root {
   --bg: #0f172a;
-  --card: #1e293b;
+  --bg-soft: #1e293b;
   --accent: #38bdf8;
-  --accent2: #6366f1;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --danger: #f87171;
+  --danger: #f43f5e;
+  --success: #34d399;
+  --text: #f8fafc;
+  --text-soft: #94a3b8;
+  --border: #334155;
+  --radius: 8px;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-family: "Inter", system-ui, sans-serif;
 }
+*,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', sans-serif;
-}
+/* ---------- LAYOUT ---------- */
+.app { max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+.title { font-size: 1.6rem; text-align: center; margin-bottom: 2rem; color: var(--accent); }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.app {
-  width: 100%;
-  max-width: 520px;
-}
-
-.title {
-  text-align: center;
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
+/* ---------- CARD ---------- */
 .card {
-  background: var(--card);
-  border-radius: 1rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.3s ease-out forwards;
 }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.card h3 { margin-bottom: 1rem; color: var(--accent); font-size: 1.1rem; }
 
-.inputRow {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.inputRow input,
-.inputRow select {
-  flex: 1 1 140px;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.07);
+/* ---------- INPUTS ---------- */
+.inputRow { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+input,
+select {
+  flex: 1 1 150px;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
   color: var(--text);
-  outline: none;
+  font-size: 0.9rem;
 }
+input::placeholder { color: var(--text-soft); }
 
-.inputRow input:focus,
-.inputRow select:focus {
-  outline: 2px solid var(--accent);
-}
-
-.pillToggle {
-  display: flex;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 2px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.pillToggle span {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  transition: 0.2s;
-}
-
-.pillToggle .active {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
-}
-
+/* ---------- BUTTONS ---------- */
 .btn {
-  width: 100%;
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 0.5rem;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--bg);
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s;
+  transition: transform 0.15s, background 0.2s;
 }
-
 .btn:hover:not(:disabled) {
+  background: #0ea5e9;
   transform: translateY(-1px);
 }
+.btn:disabled { background: var(--text-soft); cursor: not-allowed; }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* ---------- TOGGLE PILL ---------- */
+.pillToggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex: 1 1 120px;
 }
-
-.details p {
-  margin-bottom: 0.4rem;
-  font-family: 'Courier New', monospace;
+.pillToggle span {
+  flex: 1;
+  padding: 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
 }
+.pillToggle .active { background: var(--accent); color: var(--bg); }
 
-.card {
-  max-width: 100vw;
-  word-break: break-word;
-}
-
-/* secrets card */
+/* ---------- TEXTAREA ---------- */
 .secretsBox textarea {
   width: 100%;
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  padding: 0.5rem;
-  margin-top: 0.25rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
   resize: none;
-}
-.inputRow {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.inputRow input,
-.inputRow select {
-  flex: 1 1 140px;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.07);
-  color: #e2e8f0;
-  outline: none;
-}
-.pillToggle {
-  display: flex;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 2px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
-  cursor: pointer;
 }
-.pillToggle span {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  transition: 0.2s;
-}
-.pillToggle .active {
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
-  color: #fff;
-}
-.btn {
-  width: 100%;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+
+/* ---------- LINK ---------- */
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }

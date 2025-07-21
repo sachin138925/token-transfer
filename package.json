@@ -9,11 +9,13 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
+    "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "ethers": "^6.15.0",
     "mongoose": "^8.16.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.5.2",
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },

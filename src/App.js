@@ -7,8 +7,10 @@ import {
   JsonRpcProvider,
   Contract,
   formatUnits,
-  parseUnits
+  parseUnits,
 } from "ethers";
+import { Toaster, toast } from "react-hot-toast";
+import clsx from "clsx";
 import "./App.css";
 
 const RPC_URL = "https://bsc-testnet-dataseed.bnbchain.org";
@@ -22,7 +24,7 @@ const ERC20_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
-/* ---------- GENERIC CARD HELPER ---------- */
+/* ---------- GENERIC CARD ---------- */
 const Card = ({ title, children }) => (
   <section className="card">
     {title && <h3>{title}</h3>}
@@ -79,68 +81,70 @@ export default function App() {
 
   /* ---------- CREATE OR FETCH ---------- */
   const handleSubmit = async () => {
-    if (!walletName.trim() || !password.trim())
-      return alert("Fill all fields");
-
-    if (mode === "create") {
-      if (password !== confirmPw) return alert("Passwords don’t match");
-      const wallet = Wallet.createRandom();
-      const payload = {
-        name: walletName,
-        address: wallet.address,
-        privateKey: wallet.privateKey,
-        mnemonic: wallet.mnemonic.phrase,
-        password,
-      };
-      const res = await fetch("http://localhost:5000/api/wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        alert("✅ Wallet created & saved");
-        setWalletName("");
-        setPassword("");
-        setConfirmPw("");
-      } else {
-        const msg = await res.text();
-        alert(msg || "❌ Save failed");
-      }
+    if (!walletName.trim() || !password.trim()) {
+      toast.error("Fill all fields");
+      return;
+    }
+    if (mode === "create" && password !== confirmPw) {
+      toast.error("Passwords don’t match");
+      return;
     }
 
-    if (mode === "fetch") {
-      const res = await fetch(
-        `http://localhost:5000/api/wallet/${walletName}`,
-        {
+    try {
+      if (mode === "create") {
+        const wallet = Wallet.createRandom();
+        const payload = {
+          name: walletName,
+          address: wallet.address,
+          privateKey: wallet.privateKey,
+          mnemonic: wallet.mnemonic.phrase,
+          password,
+        };
+        const res = await fetch("http://localhost:5000/api/wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          toast.success("Wallet created & saved");
+          setWalletName(""); setPassword(""); setConfirmPw("");
+        } else {
+          const msg = await res.text();
+          toast.error(msg || "Save failed");
+        }
+      } else {
+        const res = await fetch(`http://localhost:5000/api/wallet/${walletName}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          toast.error(data.error);
+        } else {
+          setWalletData(data);
+          fetchBalance(data.address);
+          getUSDTBalance(data.address);
+          getUSDCBalance(data.address);
         }
-      );
-      const data = await res.json();
-      if (data.error) return alert(data.error);
-      setWalletData(data);
-      fetchBalance(data.address);
-      getUSDTBalance(data.address);
-      getUSDCBalance(data.address);
+      }
+    } catch (e) {
+      toast.error("Network error");
     }
   };
 
   /* ---------- SEND ---------- */
   const handleSend = async () => {
-    if (!walletData) return alert("Load wallet first");
-    if (!isAddress(recipient)) return alert("Invalid address");
-    if (!amount || parseFloat(amount) <= 0) return alert("Invalid amount");
+    if (!walletData) return toast.error("Load wallet first");
+    if (!isAddress(recipient)) return toast.error("Invalid address");
+    if (!amount || parseFloat(amount) <= 0) return toast.error("Invalid amount");
 
     setSending(true);
     try {
       const wallet = new Wallet(walletData.privateKey, provider);
       let tx;
       if (sendToken === "BNB") {
-        tx = await wallet.sendTransaction({
-          to: recipient,
-          value: parseEther(amount),
-        });
+        tx = await wallet.sendTransaction({ to: recipient, value: parseEther(amount) });
       } else if (sendToken === "USDT") {
         const usdt = new Contract(USDT_CONTRACT_ADDRESS, ERC20_ABI, wallet);
         const decimals = await usdt.decimals();
@@ -151,51 +155,50 @@ export default function App() {
         tx = await usdc.transfer(recipient, parseUnits(amount, decimals));
       }
       await tx.wait();
-      alert(`✅ ${sendToken} sent: ${tx.hash}`);
+      toast.success(`${sendToken} sent: ${tx.hash}`);
       setLastSentTx(tx.hash);
       setAmount("");
       fetchBalance(wallet.address);
       getUSDTBalance(wallet.address);
       getUSDCBalance(wallet.address);
     } catch (e) {
-      alert("❌ Transaction failed");
+      toast.error("Transaction failed");
     } finally {
       setSending(false);
     }
   };
 
-  /* ---------- VERIFY HELPERS ---------- */
-const fetchReceipt = async () => {
-  const trimmed = txHash.trim();
-  if (!/^0x([A-Fa-f0-9]{64})$/i.test(trimmed)) {
-    alert("Invalid transaction hash");
-    return;
-  }
-  try {
-    const res = await fetch(`http://localhost:5000/api/tx/${trimmed}`);
-    const data = await res.json();
-    if (data.error) {
-      alert(data.error);
+  /* ---------- VERIFY ---------- */
+  const fetchReceipt = async () => {
+    const trimmed = txHash.trim();
+    if (!/^0x([A-Fa-f0-9]{64})$/i.test(trimmed)) {
+      toast.error("Invalid transaction hash");
       return;
     }
-    // data has the same fields we previously built in the frontend
-    setTxReceipt({
-      hash: data.hash,
-      blockNumber: data.blockNumber,
-      status: data.status,
-      gasUsed: data.gasUsed,
-      from: data.from,
-      to: data.to,
-    });
-    setTxAmount(data.amountSent);
-  } catch (e) {
-    console.error(e);
-    alert("❌ Error fetching receipt");
-  }
-};
+    try {
+      const res = await fetch(`http://localhost:5000/api/tx/${trimmed}`);
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setTxReceipt({
+        hash: data.hash,
+        blockNumber: data.blockNumber,
+        status: data.status,
+        gasUsed: data.gasUsed,
+        from: data.from,
+        to: data.to,
+      });
+      setTxAmount(data.amountSent);
+    } catch (e) {
+      toast.error("Error fetching receipt");
+    }
+  };
 
   return (
     <div className="app">
+      <Toaster position="top-center" />
       <h1 className="title">🦊 Web3 Wallet (BNB + USDT + USDC)</h1>
 
       {/* ---------- GENERATE / FETCH CARD ---------- */}
@@ -203,13 +206,13 @@ const fetchReceipt = async () => {
         <div className="inputRow">
           <div className="pillToggle">
             <span
-              className={mode === "create" ? "active" : ""}
+              className={clsx({ active: mode === "create" })}
               onClick={() => setMode("create")}
             >
               Create
             </span>
             <span
-              className={mode === "fetch" ? "active" : ""}
+              className={clsx({ active: mode === "fetch" })}
               onClick={() => setMode("fetch")}
             >
               Fetch
@@ -262,14 +265,7 @@ const fetchReceipt = async () => {
               />
               <button
                 className="btn"
-                onClick={() => {
-                  if (revealInput !== password) {
-                    alert("Wrong password");
-                    return;
-                  }
-                  setShowSensitive((p) => !p);
-                  setRevealInput("");
-                }}
+                onClick={() => setShowSensitive((p) => !p)}
               >
                 {showSensitive ? "Hide" : "Reveal"}
               </button>
@@ -348,7 +344,7 @@ const fetchReceipt = async () => {
                 <p><strong>Block:</strong> #{txReceipt.blockNumber}</p>
                 <p>
                   <strong>Status:</strong>{" "}
-                  {txReceipt.status === 1 ? "✅ Success" : "❌ Reverted"}
+                  {Number(txReceipt.status) === 1 ? "✅ Success" : "❌ Reverted"}
                 </p>
                 <p><strong>Gas used:</strong> {txReceipt.gasUsed.toString()}</p>
                 <p><strong>From:</strong> {txReceipt.from}</p>
