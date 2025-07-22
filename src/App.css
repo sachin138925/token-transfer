@@ -98,3 +98,19 @@ input::placeholder { color: var(--text-soft); }
 /* ---------- LINK ---------- */
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* ---------- QR MODAL ---------- */
+.qr-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.qr-box {
+  background: #1e293b;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}

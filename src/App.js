@@ -11,6 +11,7 @@ import {
 } from "ethers";
 import { Toaster, toast } from "react-hot-toast";
 import clsx from "clsx";
+import QRCode from "react-qr-code"; // 👈 Add QR Code import
 import "./App.css";
 
 const RPC_URL = "https://bsc-testnet-dataseed.bnbchain.org";
@@ -24,7 +25,6 @@ const ERC20_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
-/* ---------- GENERIC CARD ---------- */
 const Card = ({ title, children }) => (
   <section className="card">
     {title && <h3>{title}</h3>}
@@ -33,7 +33,6 @@ const Card = ({ title, children }) => (
 );
 
 export default function App() {
-  /* ---------- UI STATE ---------- */
   const [mode, setMode] = useState("create");
   const [walletName, setWalletName] = useState("");
   const [password, setPassword] = useState("");
@@ -41,27 +40,24 @@ export default function App() {
   const [revealInput, setRevealInput] = useState("");
   const [showSensitive, setShowSensitive] = useState(false);
   const [sending, setSending] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
-  /* ---------- WALLET STATE ---------- */
   const [walletData, setWalletData] = useState(null);
   const [balance, setBalance] = useState(null);
   const [usdtBalance, setUsdtBalance] = useState(null);
   const [usdcBalance, setUsdcBalance] = useState(null);
 
-  /* ---------- SEND STATE ---------- */
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [sendToken, setSendToken] = useState("BNB");
   const [lastSentTx, setLastSentTx] = useState("");
 
-  /* ---------- VERIFY STATE ---------- */
   const [txHash, setTxHash] = useState("");
   const [txReceipt, setTxReceipt] = useState(null);
   const [txAmount, setTxAmount] = useState("");
 
   const provider = new JsonRpcProvider(RPC_URL);
 
-  /* ---------- BALANCE HELPERS ---------- */
   const fetchBalance = async (addr) => {
     const bal = await provider.getBalance(addr);
     setBalance(formatEther(bal));
@@ -79,7 +75,6 @@ export default function App() {
     setUsdcBalance(formatUnits(bal, dec));
   };
 
-  /* ---------- CREATE OR FETCH ---------- */
   const handleSubmit = async () => {
     if (!walletName.trim() || !password.trim()) {
       toast.error("Fill all fields");
@@ -133,7 +128,6 @@ export default function App() {
     }
   };
 
-  /* ---------- SEND ---------- */
   const handleSend = async () => {
     if (!walletData) return toast.error("Load wallet first");
     if (!isAddress(recipient)) return toast.error("Invalid address");
@@ -168,7 +162,6 @@ export default function App() {
     }
   };
 
-  /* ---------- VERIFY ---------- */
   const fetchReceipt = async () => {
     const trimmed = txHash.trim();
     if (!/^0x([A-Fa-f0-9]{64})$/i.test(trimmed)) {
@@ -199,47 +192,20 @@ export default function App() {
   return (
     <div className="app">
       <Toaster position="top-center" />
-      <h1 className="title">🦊 Web3 Wallet (BNB + USDT + USDC)</h1>
+      <h1 className="title">🦊 CryptoNest</h1>
 
-      {/* ---------- GENERATE / FETCH CARD ---------- */}
       <section className="card">
         <div className="inputRow">
           <div className="pillToggle">
-            <span
-              className={clsx({ active: mode === "create" })}
-              onClick={() => setMode("create")}
-            >
-              Create
-            </span>
-            <span
-              className={clsx({ active: mode === "fetch" })}
-              onClick={() => setMode("fetch")}
-            >
-              Fetch
-            </span>
+            <span className={clsx({ active: mode === "create" })} onClick={() => setMode("create")}>Create</span>
+            <span className={clsx({ active: mode === "fetch" })} onClick={() => setMode("fetch")}>Fetch</span>
           </div>
-
-          <input
-            placeholder="Wallet Name"
-            value={walletName}
-            onChange={(e) => setWalletName(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <input placeholder="Wallet Name" value={walletName} onChange={(e) => setWalletName(e.target.value)} />
+          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {mode === "create" && (
-            <input
-              type="password"
-              placeholder="Confirm"
-              value={confirmPw}
-              onChange={(e) => setConfirmPw(e.target.value)}
-            />
+            <input type="password" placeholder="Confirm" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
           )}
         </div>
-
         <button className="btn" onClick={handleSubmit}>
           {mode === "create" ? "Generate & Save" : "Fetch Wallet"}
         </button>
@@ -249,10 +215,31 @@ export default function App() {
         <>
           <Card title="🔐 Wallet Details">
             <p><strong>Name:</strong> {walletData.name}</p>
-            <p><strong>Address:</strong> {walletData.address}</p>
+            <p>
+              <strong>Address:</strong>{" "}
+              <a
+                href={`https://testnet.bscscan.com/address/${walletData.address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {walletData.address}
+              </a>
+            </p>
             <p><strong>BNB Balance:</strong> {balance ?? "…"} BNB</p>
             <p><strong>USDT Balance:</strong> {usdtBalance ?? "…"} USDT</p>
             <p><strong>USDC Balance:</strong> {usdcBalance ?? "…"} USDC</p>
+
+            <button className="btn" onClick={() => setQrOpen(!qrOpen)}>
+  {qrOpen ? "Hide QR Code" : "Show QR Code"}
+</button>
+{qrOpen && (
+  <div style={{ marginTop: "1rem" }}>
+    <strong></strong>
+    <div style={{ background: "white", padding: "10px", display: "inline-block", marginTop: "1.0rem" }}>
+      <QRCode value={walletData.address} size={128} />
+    </div>
+  </div>
+)}
           </Card>
 
           <Card title="👁 Reveal Private key and Mnemonic">
@@ -263,10 +250,7 @@ export default function App() {
                 value={revealInput}
                 onChange={(e) => setRevealInput(e.target.value)}
               />
-              <button
-                className="btn"
-                onClick={() => setShowSensitive((p) => !p)}
-              >
+              <button className="btn" onClick={() => setShowSensitive((p) => !p)}>
                 {showSensitive ? "Hide" : "Reveal"}
               </button>
             </div>
@@ -283,22 +267,11 @@ export default function App() {
 
           <Card title="🚀 Send Tokens">
             <div className="inputRow">
-              <input
-                placeholder="Recipient Address"
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-              />
+              <input placeholder="Recipient Address" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
             </div>
             <div className="inputRow">
-              <input
-                placeholder="Amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              <select
-                value={sendToken}
-                onChange={(e) => setSendToken(e.target.value)}
-              >
+              <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <select value={sendToken} onChange={(e) => setSendToken(e.target.value)}>
                 <option value="BNB">BNB</option>
                 <option value="USDT">USDT</option>
                 <option value="USDC">USDC</option>
@@ -307,7 +280,6 @@ export default function App() {
             <button className="btn" onClick={handleSend} disabled={sending}>
               {sending ? "Sending…" : `Send ${sendToken}`}
             </button>
-
             {lastSentTx && (
               <p style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
                 Last tx:{" "}
@@ -333,19 +305,23 @@ export default function App() {
                   setTxAmount("");
                 }}
               />
-              <button className="btn" onClick={fetchReceipt}>
-                Lookup
-              </button>
+              <button className="btn" onClick={fetchReceipt}>Lookup</button>
             </div>
 
             {txReceipt && (
               <div style={{ marginTop: "0.8rem", fontSize: "0.9rem" }}>
-                <p><strong>Hash:</strong> {txReceipt.hash}</p>
-                <p><strong>Block:</strong> #{txReceipt.blockNumber}</p>
                 <p>
-                  <strong>Status:</strong>{" "}
-                  {Number(txReceipt.status) === 1 ? "✅ Success" : "❌ Reverted"}
+                  <strong>Hash:</strong>{" "}
+                  <a
+                    href={`https://testnet.bscscan.com/tx/${txReceipt.hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {txReceipt.hash}
+                  </a>
                 </p>
+                <p><strong>Block:</strong> #{txReceipt.blockNumber}</p>
+                <p><strong>Status:</strong> {Number(txReceipt.status) === 1 ? "✅ Success" : "❌ Reverted"}</p>
                 <p><strong>Gas used:</strong> {txReceipt.gasUsed.toString()}</p>
                 <p><strong>From:</strong> {txReceipt.from}</p>
                 <p><strong>To:</strong> {txReceipt.to}</p>
