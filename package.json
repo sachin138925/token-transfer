@@ -11,6 +11,8 @@
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.2.0",
     "ethers": "^6.15.0",
     "framer-motion": "^12.23.6",
     "mongoose": "^8.16.4",
