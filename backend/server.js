@@ -1,6 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
+const cors =require("cors");
 const bcrypt = require("bcrypt");
 const {
   JsonRpcProvider,
@@ -29,35 +29,37 @@ const walletSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
 });
 
-// ✅ THIS SCHEMA IS CORRECT AND SAVES EVERYTHING
 const txSchema = new mongoose.Schema({
   hash: { type: String, unique: true, required: true },
   from: String,
   to: String,
   amount: String,
-  tokenName: String, // "BNB", "USDT", etc.
+  tokenName: String,
   blockNumber: Number,
   status: String,
-  timestamp: Date,   // The accurate on-chain timestamp
+  timestamp: Date,
+});
+
+const contactSchema = new mongoose.Schema({
+  walletAddress: { type: String, required: true, index: true },
+  contactName: { type: String, required: true },
+  contactAddress: { type: String, required: true },
 });
 
 const Wallet = mongoose.model("Wallet", walletSchema);
 const TxLog = mongoose.model("TxLog", txSchema);
+const Contact = mongoose.model("Contact", contactSchema);
 
 /* ---------- PROVIDER + CONFIG ---------- */
 const provider = new JsonRpcProvider("https://bsc-testnet-dataseed.bnbchain.org");
 const USDT_CONTRACT_ADDRESS = "0x787A697324dbA4AB965C58CD33c13ff5eeA6295F";
 const USDC_CONTRACT_ADDRESS = "0x342e3aA1248AB77E319e3331C6fD3f1F2d4B36B1";
-
-const ERC20_ABI = [
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-  "function decimals() view returns (uint8)",
-];
+const ERC20_ABI = [ "event Transfer(address indexed from, address indexed to, uint256 value)", "function decimals() view returns (uint8)" ];
 const erc20Interface = new Interface(ERC20_ABI);
 
-
 /* ---------- API ENDPOINTS ---------- */
-// Wallets (Create & Fetch) remain the same
+
+// Wallets
 app.post("/api/wallet", async (req, res) => {
     try {
         const { name, address, privateKey, mnemonic, password } = req.body;
@@ -71,6 +73,7 @@ app.post("/api/wallet", async (req, res) => {
         res.status(500).json({ error: "Server error during wallet creation" });
     }
 });
+
 app.post("/api/wallet/:name", async (req, res) => {
     try {
         const { name } = req.params;
@@ -87,88 +90,95 @@ app.post("/api/wallet/:name", async (req, res) => {
     }
 });
 
-// ✅ THIS ENDPOINT CORRECTLY SAVES TOKEN & TIME
+// Transactions (Manual Logging)
 app.post("/api/tx/:hash", async (req, res) => {
-  try {
-    const { hash } = req.params;
-    const existingTx = await TxLog.findOne({ hash });
-    if(existingTx) {
-      return res.status(200).json({message: "Tx already logged."});
-    }
+    try {
+        const { hash } = req.params;
+        const existingTx = await TxLog.findOne({ hash });
+        if(existingTx) return res.status(200).json({message: "Tx already logged."});
 
-    const receipt = await provider.getTransactionReceipt(hash);
-    if (!receipt) return res.status(404).json({ error: "Transaction not yet mined" });
+        const receipt = await provider.getTransactionReceipt(hash);
+        if (!receipt) return res.status(404).json({ error: "Transaction not yet mined" });
 
-    const block = await provider.getBlock(receipt.blockNumber);
-    const tx = await provider.getTransaction(hash);
-    
-    let amountStr = "0";
-    let tokenName = "";
-    let actualTo = receipt.to; 
-
-    // Native BNB transfer (check if there's no data, meaning it's not a contract call)
-    if (tx.data === "0x") {
-      amountStr = formatEther(tx.value);
-      tokenName = "BNB";
-    } 
-    // ERC20 Token Transfer
-    else {
-      const transferEventTopic = erc20Interface.getEvent("Transfer").topicHash;
-      const tokenLog = receipt.logs.find(log => log.topics[0] === transferEventTopic);
-      
-      if (tokenLog) {
-        const parsedLog = erc20Interface.parseLog(tokenLog);
-        actualTo = parsedLog.args.to; 
-        const tokenContract = new Contract(tokenLog.address, ERC20_ABI, provider);
-        const decimals = await tokenContract.decimals();
-        amountStr = formatUnits(parsedLog.args.value, decimals);
+        const block = await provider.getBlock(receipt.blockNumber);
+        const tx = await provider.getTransaction(hash);
         
-        if (tokenLog.address.toLowerCase() === USDT_CONTRACT_ADDRESS.toLowerCase()) {
-          tokenName = "USDT";
-        } else if (tokenLog.address.toLowerCase() === USDC_CONTRACT_ADDRESS.toLowerCase()) {
-          tokenName = "USDC";
+        let amountStr = "0", tokenName = "", actualTo = receipt.to; 
+
+        if (tx.data === "0x") {
+            amountStr = formatEther(tx.value);
+            tokenName = "BNB";
         } else {
-          tokenName = "Unknown";
+            const transferEventTopic = erc20Interface.getEvent("Transfer").topicHash;
+            const tokenLog = receipt.logs.find(log => log.topics[0] === transferEventTopic);
+            if (tokenLog) {
+                const parsedLog = erc20Interface.parseLog(tokenLog);
+                actualTo = parsedLog.args.to;
+                const tokenContract = new Contract(tokenLog.address, ERC20_ABI, provider);
+                amountStr = formatUnits(parsedLog.args.value, await tokenContract.decimals());
+                if (tokenLog.address.toLowerCase() === USDT_CONTRACT_ADDRESS.toLowerCase()) tokenName = "USDT";
+                else if (tokenLog.address.toLowerCase() === USDC_CONTRACT_ADDRESS.toLowerCase()) tokenName = "USDC";
+                else tokenName = "Unknown";
+            } else {
+                tokenName = "N/A";
+            }
         }
-      } else {
-        tokenName = "N/A"; // It was a contract interaction but not a standard transfer
-      }
+
+        const logData = { hash: receipt.hash, from: receipt.from.toLowerCase(), to: (actualTo || receipt.to).toLowerCase(), blockNumber: receipt.blockNumber, amount: amountStr, tokenName, status: receipt.status === 1 ? "Success" : "Failed", timestamp: new Date(block.timestamp * 1000) };
+        await TxLog.findOneAndUpdate({ hash }, logData, { upsert: true, new: true });
+        res.status(201).json(logData);
+    } catch (err) {
+        console.error("Error logging transaction:", err);
+        res.status(500).json({ error: "Server error logging transaction" });
     }
-
-    const logData = {
-      hash: receipt.hash,
-      from: receipt.from.toLowerCase(),
-      to: (actualTo || receipt.to).toLowerCase(),
-      blockNumber: receipt.blockNumber,
-      amount: amountStr,
-      tokenName: tokenName,
-      status: receipt.status === 1 ? "Success" : "Failed",
-      timestamp: new Date(block.timestamp * 1000),
-    };
-
-    await TxLog.findOneAndUpdate({ hash }, logData, { upsert: true, new: true });
-    res.status(201).json(logData);
-
-  } catch (err) {
-    console.error("Error logging transaction:", err);
-    res.status(500).json({ error: "Server error logging transaction" });
-  }
 });
 
-// History endpoint remains the same
 app.get("/api/history/:address", async (req, res) => {
     try {
         const { address } = req.params;
         const lowerCaseAddress = address.toLowerCase();
-        const history = await TxLog.find({
-          $or: [{ from: lowerCaseAddress }, { to: lowerCaseAddress }],
-        }).sort({ timestamp: -1 });
+        const history = await TxLog.find({ $or: [{ from: lowerCaseAddress }, { to: lowerCaseAddress }] }).sort({ timestamp: -1 });
         res.json(history);
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: "Failed to fetch history" });
     }
 });
 
+// Contacts
+app.get("/api/contacts/:walletAddress", async (req, res) => {
+  try {
+    const contacts = await Contact.find({ walletAddress: req.params.walletAddress });
+    res.json(contacts);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch contacts." });
+  }
+});
+
+app.post("/api/contacts", async (req, res) => {
+  try {
+    const { walletAddress, contactName, contactAddress } = req.body;
+    if (!walletAddress || !contactName || !contactAddress) return res.status(400).json({ error: "All fields are required." });
+    const newContact = new Contact({ walletAddress, contactName, contactAddress });
+    await newContact.save();
+    res.status(201).json(newContact);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save contact." });
+  }
+});
+
+app.delete("/api/contacts/:contactId", async (req, res) => {
+  try {
+    const result = await Contact.findByIdAndDelete(req.params.contactId);
+    if (!result) return res.status(404).json({ error: "Contact not found." });
+    res.status(200).json({ message: "Contact deleted." });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete contact." });
+  }
+});
+
+/* ---------- START SERVER ---------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+mongoose.connection.once('open', () => {
+    console.log('✅ MongoDB connected successfully.');
+    app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+});
